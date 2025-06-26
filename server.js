@@ -2,30 +2,47 @@ const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
 const wss = new WebSocket.Server({ port: 3000 });
-const clients = new Map();
+const clients = new Map(); // key: ws, value: { id }
 
 wss.on('connection', (ws) => {
   const id = uuidv4();
   clients.set(ws, { id });
   console.log(`✅ Client connected: ${id}`);
 
-  ws.send(JSON.stringify({ type: 'init', id }));
+  // Sende dem neuen Client alle anderen IDs
+  const otherIds = Array.from(clients.values())
+    .filter(client => client.id !== id)
+    .map(client => client.id);
+  ws.send(JSON.stringify({ type: 'init', id, others: otherIds }));
 
-  ws.on('message', (message) => {
+  // Informiere alle anderen über den neuen Client
+  wss.clients.forEach(client => {
+    if (client !== ws && client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ type: 'new', id }));
+    }
+  });
+
+  ws.on('message', (msg) => {
     let data;
     try {
-      data = JSON.parse(message);
-    } catch (e) {
-      console.error('❌ Ungültiges JSON:', message);
+      data = JSON.parse(msg);
+    } catch {
+      console.error('Ungültiges JSON:', msg);
       return;
     }
 
-    wss.clients.forEach((client) => {
+    // Wenn Avatar, hänge die ID dran
+    if (data.type === 'avatar') {
+      data.id = id;
+    }
+    // Wenn Chat, hänge die ID dran
+    if (data.type === 'chat') {
+      data.id = id;
+    }
+    // Broadcast nur an alle anderen
+    wss.clients.forEach(client => {
       if (client !== ws && client.readyState === WebSocket.OPEN) {
-        if (data.type === 'sound' || data.type === 'avatar') {
-          if (data.type === 'avatar') {
-            data.id = clients.get(ws).id;
-          }
+        if (data.type === 'sound' || data.type === 'avatar' || data.type === 'chat') {
           client.send(JSON.stringify(data));
         }
       }
@@ -33,10 +50,10 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    console.log(`❌ Client disconnected: ${clients.get(ws).id}`);
-    const id = clients.get(ws).id;
+    console.log(`❌ Client disconnected: ${id}`);
     clients.delete(ws);
-    wss.clients.forEach((client) => {
+    // Informiere alle anderen, dass dieser Client verschwunden ist
+    wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({ type: 'remove', id }));
       }
@@ -44,29 +61,4 @@ wss.on('connection', (ws) => {
   });
 });
 
-wss.on('connection', (ws) => {
-  const id = uuidv4();
-  clients.set(id, ws);
-
-  ws.on('message', (msg) => {
-    const data = JSON.parse(msg);
-
-    if (data.type === 'avatar') {
-      clients.forEach((clientWs, clientId) => {
-        if (clientId !== id) {
-          clientWs.send(JSON.stringify({
-            type: 'avatar',
-            id,
-            position: data.position,
-            rotation: data.rotation,
-            headRotationY: data.headRotationY, 
-          }));
-        }
-      });
-    }
-  });
-
-  // ...
-});
-
-console.log('🚀 WebSocket Server läuft auf ws://localhost:3000');
+console.log('🚀 WS-Server läuft auf ws://localhost:3000');

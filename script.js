@@ -1,5 +1,11 @@
 window.addEventListener('load', () => {
-  const socket = new WebSocket('ws://localhost:3000');
+  const hostname = window.location.hostname;
+  const webRoomsWebSocketServerAddr = `ws://${hostname}:3000`;
+  const socket = new WebSocket(`ws://${hostname}:3000`);
+  socket.onopen  = () => console.log("✅ WS-Connection open");
+socket.onerror = e  => console.error("❌ WS-Error", e);
+socket.onclose = ()  => console.warn("⚠️ WS-Connection closed");
+
 
   let audioContext; 
   let analyser;
@@ -352,6 +358,27 @@ function createAvatar(id) {
   avatar.setAttribute('id', `avatar-${id}`);
   scene.appendChild(avatar);
   avatars[id] = avatar;
+
+  // Augen nur für lokalen Spieler-Avatar erstellen
+  if (id === myId) {
+    // Linkes Auge
+    const leftEye = document.createElement('a-sphere');
+    leftEye.setAttribute('radius', 0.06); // etwas größer
+    leftEye.setAttribute('color', '#fff');
+    leftEye.setAttribute('position', '-0.07 0.07 0.3'); // weiter nach vorne
+    leftEye.setAttribute('id', 'left-eye');
+    leftEye.setAttribute('material', 'shader: flat'); // flaches Material
+    avatar.appendChild(leftEye);
+
+    // Rechtes Auge
+    const rightEye = document.createElement('a-sphere');
+    rightEye.setAttribute('radius', 0.06); // etwas größer
+    rightEye.setAttribute('color', '#fff');
+    rightEye.setAttribute('position', '0.07 0.07 0.3'); // weiter nach vorne
+    rightEye.setAttribute('id', 'right-eye');
+    rightEye.setAttribute('material', 'shader: flat'); // flaches Material
+    avatar.appendChild(rightEye);
+  }
 }
 
   function updateAvatar(id, position) {
@@ -390,6 +417,16 @@ function createAvatar(id) {
     if (data.type === 'init') {
       myId = data.id;
       createAvatar(myId);
+      // Erstelle Avatare für alle anderen
+      if (Array.isArray(data.others)) {
+        data.others.forEach(otherId => {
+          createAvatar(otherId);
+        });
+      }
+    }
+
+    if (data.type === 'new' && data.id !== myId) {
+      createAvatar(data.id);
     }
 
     if (data.type === 'avatar' && data.id !== myId) {
@@ -402,4 +439,41 @@ function createAvatar(id) {
     }
   });
 
+// Augen folgen der Kamerarichtung (nur für lokalen Avatar)
+setInterval(() => {
+  if (!myId) return;
+  const avatar = avatars[myId];
+  if (!avatar) return;
+  const camera = document.querySelector('[camera]');
+  if (!camera) return;
+
+  // Blickrichtung der Kamera holen
+  const dir = new THREE.Vector3();
+  camera.object3D.getWorldDirection(dir);
+  dir.normalize();
+
+  // Augen-Offsets (links/rechts)
+  const leftOffset = new THREE.Vector3(-0.07, 0.07, 0.23);
+  const rightOffset = new THREE.Vector3(0.07, 0.07, 0.23);
+
+  // Position des Avatars holen
+  const avatarPos = avatar.object3D.position.clone();
+
+  // Zielpunkt vor dem Avatar in Blickrichtung
+  const lookTarget = avatarPos.clone().add(dir.multiplyScalar(0.3));
+
+  // Augen holen
+  const leftEye = avatar.querySelector('#left-eye');
+  const rightEye = avatar.querySelector('#right-eye');
+  if (leftEye && rightEye) {
+    // Augenpositionen berechnen (relativ zum Avatar)
+    const leftWorld = avatarPos.clone().add(leftOffset);
+    const rightWorld = avatarPos.clone().add(rightOffset);
+
+    // Die Augen "schielen" auf den Zielpunkt
+    leftEye.object3D.lookAt(lookTarget);
+    rightEye.object3D.lookAt(lookTarget);
+  }
+}, 30);
 });
+
