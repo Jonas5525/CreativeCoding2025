@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="script.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-joystick-component@3.0.0/dist/aframe-joystick-component.min.js"></script>
+
 </head>
 <body>
   
@@ -74,6 +76,10 @@
         geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
         material="color: white; shader: flat">
       </a-entity>
+      <a-entity id="cameraRig" position="0 1.6 0" movement-controls joystick-controls>
+  <a-entity camera look-controls position="0 0 0"></a-entity>
+</a-entity>
+
     </a-entity>
 
 <a-entity id="visualizer" position="5.9 0.1 -6" rotation="0 270 0"></a-entity>
