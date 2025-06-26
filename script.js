@@ -1,5 +1,5 @@
 window.addEventListener('load', () => {
-  const socket = new WebSocket('ws://localhost:3000');
+  const socket = new WebSocket('wss://creativecoding2025-production.up.railway.app');
 
   let audioContext; 
   let analyser;
