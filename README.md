@@ -1,1 +1,0 @@
-RythmSpace ist ein interaktives Minigame, das Nutzer:innen ermöglicht, eigene Beats zu erstellen oder bestehende Tracks anzuhören. Der digitale Musikbereich bietet einfache Tools zur Beat-Komposition sowie eine Auswahl an vorgefertigten Loops und Patterns. Ideal für spontanes Musikmachen oder entspanntes Zuhören.
